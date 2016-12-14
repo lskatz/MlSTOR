@@ -100,6 +100,7 @@ sub annotateAsm{
         -score         =>$score,
         -tag           =>{ 
                            locus=>$locusname,
+                           gene =>$allele,
                            note =>"Evidence:$0",
                          },
       );
