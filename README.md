@@ -1,6 +1,6 @@
-#MoLeST
+#MoLST
 
-MoLeST: Multi-Locus Sequence Typing to find Orthologs
+MoLST: Multi-Locus Sequence Typing to find Orthologs
 
 ##Synopsis
 
