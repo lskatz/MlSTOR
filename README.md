@@ -1,6 +1,6 @@
 #MoLeST
 
-MoLeST: Multi-Locus Sequence Typing to find Ortholog Expanses
+MoLeST: Multi-Locus Sequence Typing to find Orthologs
 
 ##Synopsis
 
