@@ -1,6 +1,6 @@
-#MoLST
+#MlSTOR
 
-MoLST: Multi-Locus Sequence Typing to find Orthologs
+MlSTOR: Multilocus Sequence Typing to find Orthologous Regions
 
 ##Synopsis
 
