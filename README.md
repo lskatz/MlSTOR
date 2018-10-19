@@ -4,7 +4,7 @@ MlSTOR: Multilocus Sequence Typing to find Orthologous Regions
 
 ## Synopsis
 
-Annotate a genome using only an MLST scheme.  Finally a bioinformatics tool whose name you can be embarrassed by.  
+Annotate a genome using only an MLST scheme.   
 
 ## Usage
 
