@@ -1,12 +1,12 @@
-#MlSTOR
+# MlSTOR
 
 MlSTOR: Multilocus Sequence Typing to find Orthologous Regions
 
-##Synopsis
+## Synopsis
 
 Annotate a genome using only an MLST scheme.  Finally a bioinformatics tool whose name you can be embarrassed by.  
 
-##Usage
+## Usage
 
     annotateMLST.pl assembly.fasta --mlstdir MLST > annotation.gbk
       --numcpus         1      number of cpus to use
@@ -18,7 +18,7 @@ Annotate a genome using only an MLST scheme.  Finally a bioinformatics tool whos
                                hit will be one annotation per
                                MLST locus.
 
-##Setup
+## Setup
 
 In order to annotate with an MLST scheme, you must have an MLST scheme.  The easiest way to get an MLST scheme is by using `mlst` at https://github.com/tseemann/mlst.
 
