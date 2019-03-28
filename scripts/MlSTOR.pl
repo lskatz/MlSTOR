@@ -77,7 +77,7 @@ sub main{
   for(my $t=@thr-1;$t>=0;$t--){
     my $tmp = $thr[$t]->join;
 
-    my $percentDone = sprintf("%0.2f",($t+1)/$$settings{numcpus} * 100);
+    my $percentDone = sprintf("%0.2f",100-($t+1)/$$settings{numcpus} * 100);
     logmsg "Adding features for ".scalar(@$tmp)." loci ($percentDone% done)";
     push(@feature, @$tmp);
   }
