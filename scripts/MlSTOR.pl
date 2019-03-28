@@ -13,6 +13,8 @@ use Bio::Seq;
 use Bio::SeqIO;
 use Bio::SeqFeature::Generic;
 
+use threads;
+
 $0=basename $0;
 
 sub logmsg{print STDERR "$0: @_\n"}
@@ -30,54 +32,84 @@ sub main{
 
   my($asm) =@ARGV;
   die usage() if(!$asm);
-  
-  my $richseqHash=annotateAsm($asm,$$settings{mlstdir},$settings);
 
-  # Print the richseq to stdout
+  my @mlstLocus = glob("$$settings{mlstdir}/*.fna");
+  my $numLoci = scalar(@mlstLocus);
+  if(!$numLoci){
+    die "ERROR: no loci were found in $$settings{mlstdir}";
+  } elsif($numLoci < 7){
+    logmsg "WARNING: there are only $numLoci loci in this scheme.";
+  }
+  
+  # Make the blast database
+  my $blastdb="$$settings{tempdir}/assembly.fna";
+  cp($asm,$blastdb) or die "ERROR: could not copy $asm to $blastdb: $!";
+  system("makeblastdb -dbtype nucl -in $blastdb 1>&2"); die if $?;
+
+  my $numLociPerThread = int($numLoci / $$settings{numcpus}) + 1;
+  my @thr;
+  for(0..$$settings{numcpus}-1){
+    my @threadLocus = splice(@mlstLocus, 0, $numLociPerThread);
+    $thr[$_] = threads->new(\&annotationWorker, $blastdb, \@threadLocus, $settings);
+    logmsg scalar(@threadLocus)." loci being compared in thread ".$thr[$_]->tid;
+  }
+
+  # While we are annotating, go ahead and read in the assembly
+  my %seq;
+  my $seqin=Bio::SeqIO->new(-file=>$asm);
+  while(my $seq=$seqin->next_seq){
+    # Add a source tag
+    my $feature=Bio::SeqFeature::Generic->new(
+      -start       =>1,
+      -end         =>$seq->length,
+      -primary     =>"source",
+    );
+    $seq->add_SeqFeature($feature);
+
+    $seq{$seq->id}=$seq;
+  }
+
+  # Join threads and add the sequence features as we go.
+  my $featureCounter=0;
+  for(my $t=0;$t<@thr;$t++){
+    my $tmp = $thr[$t]->join;
+
+    my $percentDone = sprintf("%0.2f",($t+1)/$$settings{numcpus} * 100);
+    logmsg "Adding features for ".scalar(@$tmp)." loci ($percentDone% done)";
+    for my $feature(@$tmp){
+      my $seqid = $feature->seq_id;
+      $seq{$seqid}->add_SeqFeature($feature);
+      $featureCounter++;
+    }
+  }
+  logmsg "Done adding all $featureCounter features.";
+
+  # Print the genbank file
+  logmsg "Printing to stdout";
   my $outseq=Bio::SeqIO->new(-format=>"genbank");
-  for my $seq(values(%$richseqHash)){
+  for my $seq( sort{ $b->length <=> $a->length } values(%seq)){
     $outseq->write_seq($seq);
   }
 
   return 0;
 }
 
-sub annotateAsm{
-  my($asm,$mlstDir,$settings)=@_;
+sub annotationWorker{
+  my($blastdb, $loci, $settings)=@_;
+  my $numLoci = scalar(@$loci);
+  
+  my @feature;
 
-  # Make the blast database
-  my $blastdb="$$settings{tempdir}/assembly.fna";
-  cp($asm,$blastdb);
-  system("makeblastdb -dbtype nucl -in $blastdb 1>&2"); die if $?;
-
-  # Prepare the richseq
-  my %seq;
-  my $seqin=Bio::SeqIO->new(-file=>$asm);
-  while(my $seq=$seqin->next_seq){
-    $seq{$seq->id}=$seq;
-
-    # Add a source tag
-    my $feature=Bio::SeqFeature::Generic->new(
-      -start         =>1,
-      -end           =>$seq->length,
-      -primary       =>"source",
-    );
-    $seq{$seq->id}->add_SeqFeature($feature);
-  }
-
-  my @locus=glob("$mlstDir/*.fna");
-  my $numloci=@locus;
-  for(my $i=0;$i<$numloci;$i++){
-    my $locusname=basename($locus[$i], qw(.fna));
+  for(my $i=0;$i<$numLoci;$i++){
+    my $locusname=basename($$loci[$i], qw(.fna));
     my $blastResult="$$settings{tempdir}/$locusname.tsv";
 
     # Run the blast and sort by highest score
-    # TODO do one blast per thread instead of
-    # multithreading blast.
-    system("blastn -query $locus[$i] -db $blastdb -num_threads $$settings{numcpus} -outfmt 6 | sort -k12,12nr > $blastResult");
+    system("blastn -query $$loci[$i] -db $blastdb -num_threads 1 -outfmt 6 > $blastResult");
     die if $?;
 
-    open(my $blsFh, "<", $blastResult) or die "ERROR: could not read $blastResult: $!";
+    # Create a seq feature
+    open(my $blsFh, "sort -k12,12nr $blastResult | ") or die "ERROR: could not read and sort $blastResult: $!";
     while(<$blsFh>){
       chomp;
       my($allele,$contig,$identity,$alnLength,$mismatch, $gap, $qstart, $qend, $sstart, $send, $evalue, $score)=split /\t/;
@@ -98,6 +130,7 @@ sub annotateAsm{
         -source_tag    => $0,
         -display_name  =>$locusname,
         -score         =>$score,
+        -seq_id        =>$contig,
         -tag           =>{ 
                            locus=>$locusname,
                            gene =>$allele,
@@ -108,14 +141,16 @@ sub annotateAsm{
       # If we're doing the quick method and not the smart method,
       # then just add the first feature with a good score
       if($$settings{annotationType} eq "quick"){
-        $seq{$contig}->add_SeqFeature($feature);
+        push(@feature, $feature);
         last;
+      } else {
+        die "ERROR: I do not understand annotationType other than quick right now";
       }
     }
+    close $blsFh;
   }
 
-  return \%seq;
-
+  return \@feature;
 }
 
 sub usage{
