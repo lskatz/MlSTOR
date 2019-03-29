@@ -13,25 +13,23 @@ Annotate a genome using only an MLST scheme.
       --mlstdir         ''     Location of MLST files. All
                                files must have .fna extension.
       --tempdir         ''     Location of temporary files (optional)
-      --annotationType  quick  The type of annotation.
-                               Quick indicates that the first
-                               hit will be one annotation per
-                               MLST locus.
 
 ## Setup
 
 In order to annotate with an MLST scheme, you must have an MLST scheme.  The easiest way to get an MLST scheme is by using `mlst` at https://github.com/tseemann/mlst.
 
-### Listeria wgMLST
-
-On the other hand if you are in a hurry, you can get the core-genome MLST scheme from Pasteur Institut with this command:
-
-    mkdir cgMLST
-    cd cgMLST
-    wget http://bigsdb.pasteur.fr/tmp/BIGSdb_7057_1481740268_42735.txt | cut -f 2 | tail -n +2 | xargs -P 12 -n 1 sh -c 'wget "http://bigsdb.pasteur.fr/perl/bigsdb/bigsdb.pl?db=pubmlst_listeria_seqdef_public&page=downloadAlleles&locus=$0" -O $0.fna'
+Example(s) of other schemes are below.  Contributions are welcome in the form of pull requests for these schemes.  Either in documentation format in this readme or via a tar.gz file similar to the section below for Escherichia.
 
 ### EnteroBase Eschericia
+
+#### Prepackaged
+
+    cd db
+    tar zxvf Escherichia.ref.tar.gz
+
+#### Straight from the source
 
     mkdir Eschericia.cgMLSTv1
     wget http://enterobase.warwick.ac.uk/schemes/Escherichia.cgMLSTv1/cgMLST_ref.fasta -O - | \
       perl -MBio::Perl -e '$in=Bio::SeqIO->new(-fh=>\*STDIN); while($seq=$in->next_seq){$locus = $seq->id; $out=Bio::SeqIO->new(-file=>">>Eschericia.cgMLSTv1/$locus.fna"); $out->write_seq($seq);}'
+
